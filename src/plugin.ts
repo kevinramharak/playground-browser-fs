@@ -14,13 +14,17 @@ function highlight(sandbox: Sandbox, code: string, language: string, options: ed
 }
 
 export function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
+    if (window.browserfs) {
+        console.warn('browserfs already exists. this might cause issues');
+    }
+
     const browserfs = installBrowserFS();
-    configureBrowserFS({
+    const whenConfigured = configureBrowserFS({
         fs: 'MountableFileSystem',
-    }).then(() => {
-        if (!window.browserfs) {
-            window.browserfs = browserfs;
-        }
+        options: {},
+    }).then((root) => {
+        browserfs.root = root;
+        window.browserfs = browserfs;
     });
 
     return {
@@ -33,18 +37,36 @@ export function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
             ds.p(`This plugin sets up an instance of <a href="https://github.com/kevinramharak/BrowserFS" rel="noopener" target="_blank">Browser FS</a> (fork) to be used by other plugins.`);
             
             ds.subtitle('API');
-            ds.p('see the <a href="https://github.com/kevinramharak/BrowserFS" rel="noopener" target="_blank">docs</a> for more information how to use BrowserFS in your plugin');
+            const p = ds.p('see the <a href="https://github.com/kevinramharak/BrowserFS" rel="noopener" target="_blank">docs</a> for more information how to use BrowserFS in your plugin');
 
-            ds.subtitle('current mount points:')
+            const div = document.createElement('div');
+            p.parentElement.appendChild(div);
+            const subds = utils.createDesignSystem(div);
 
-            const { root } = browserfs;
-            const mountMap: { [mountPoint: string]: FileSystem<FileSystemType> } = (root as any).mntMap;
-            let list = '';
-            Object.entries(mountMap).forEach(([name, fs]) => {
-                list += `- ${name} : ${fs.getName()}\n`;
+            subds.subtitle('BrowserFS is still initialising...');
+
+            whenConfigured.then(() => {
+                subds.clear();
+                subds.subtitle('current mount points:')
+
+                const { root } = browserfs;
+                const mountMap: { [mountPoint: string]: FileSystem<FileSystemType> } = (root as any).mntMap;
+                let list = '';
+                if (!mountMap['/']) {
+                    list += `- / : ${root._getFs('/').fs.getName()} - default`;
+                }
+                Object.entries(mountMap).forEach(([mountPoint, fs]) => {
+                    list += `- ${mountPoint} : ${fs.getName()}\n`;
+                });
+
+                ds.code(list);
+            }).catch(e => {
+                subds.clear();
+                subds.subtitle('Something went wrong while initialising BrowserFS');
+                subds.code(e);
+                throw e;
             });
 
-            ds.code(list);
         },
     }
 }

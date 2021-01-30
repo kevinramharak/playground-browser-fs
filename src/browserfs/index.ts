@@ -7,9 +7,11 @@ export type FileSystemType = keyof typeof bfs.FileSystem;
 export type FileSystemConstructor<T extends FileSystemType> = typeof bfs['FileSystem'][T];
 type FileSystemCreateCallbackParameters<T extends FileSystemType> = Parameters<Parameters<FileSystemConstructor<T>['Create']>[1]>;
 export type FileSystem<T extends FileSystemType> = FileSystemCreateCallbackParameters<T>[1];
+
+// TODO: fix the type mess that is BrowserFS
+//export type ExactFileSystemConfiguration<T extends FileSystemType> = T extends 'InMemory' ? BaseFileSystemConfiguration<T> : Parameters<FileSystemConstructor<T>['Create']>[0];
 export type BaseFileSystemConfiguration<T extends FileSystemType> = { fs: T, options?: any };
-export type ExactFileSystemConfiguration<T extends FileSystemType> = T extends 'InMemory' ? BaseFileSystemConfiguration<T> : Parameters<FileSystemConstructor<T>['Create']>[0];
-export type FileSystemConfiguration<T extends FileSystemType> = BaseFileSystemConfiguration<T> & { options?: ExactFileSystemConfiguration<T> };
+export type FileSystemConfiguration<T extends FileSystemType> = BaseFileSystemConfiguration<T>;
 
 export interface BrowserFSHost {
     buffer: typeof import('buffer'),
@@ -51,15 +53,13 @@ export function installBrowserFS(host: Record<string, any> = {}): typeof host & 
  * @internal
  */
 export function configureBrowserFS<T extends FileSystemType>(config: FileSystemConfiguration<T>) {
-    return createFileSystem(config).then(fs => {
-        browserfs.root = bfs.initialize(fs) as FileSystem<'MountableFileSystem'>;
-    });
+    return createFileSystem(config).then(fs => fs as FileSystem<'MountableFileSystem'>);
 }
 
 export function createFileSystem<T extends FileSystemType>(config: FileSystemConfiguration<T>) {
     return new Promise<FileSystem<T>>((resolve, reject) => {
-        bfs.FileSystem[config.fs].Create(config, (error: any, fs: any) => {
-            error ? reject(error) : resolve(fs);
+        bfs.getFileSystem(config, (error, fs) => {
+            error ? reject(error) : resolve(fs as FileSystem<T>);
         });
     });
 }
