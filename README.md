@@ -6,6 +6,44 @@ The Playground Browser FS plugin provides an api on the global 'browserfs' for o
 
 This plugin intialises [BrowserFS](https://github.com/jvilk/BrowserFS) with a [`MountableFileSystem`](https://jvilk.com/browserfs/2.0.0-beta/classes/_backend_mountablefilesystem_.mountablefilesystem.html). This allows other plugins to create and [mount](https://jvilk.com/browserfs/2.0.0-beta/classes/_backend_mountablefilesystem_.mountablefilesystem.html#mount) additional filesystems any given mount point.
 
+To add Playground Browser FS to your plugin you need to perform the following steps:
+
+### install the plugin as a dev dependency
+```
+yarn add -D playground-browser-fs
+```
+
+### install the BrowserFS fork as a dependency
+```
+# TODO: publish to npm?
+yarn add -D https://github.com/kevinramharak/BrowserFS
+```
+
+### configure rollup to treat it as an external file
+```
+// something like:
+export default rootFiles.map(name => {
+  /** @type { import("rollup").RollupOptions } */
+  const options = {
+    input: `src/${name}`,
+    external: ['typescript', 'playground-browser-fs', 'browserfs'], // <-- configure this
+    output: {
+      name,
+      dir: 'dist',
+      format: 'amd',
+    },
+    plugins: [typescript({ tsconfig: 'tsconfig.json' }), commonjs(), node(), json()],
+  }
+  return options
+})
+```
+### (type) import the package
+```ts
+import {  } from 'playground-browser-fs';
+import type {  } from 'playground-browser-fs';
+```
+
+
 BrowserFS provides an interface similar to the [`fs`](https://jvilk.com/browserfs/2.0.0-beta/interfaces/_core_fs_.fsmodule.html) module used in nodejs. In addition to the `fs` module BrowserFS provides the following shims with its `require` function:
 - [`path`](https://github.com/jvilk/bfs-path)
 - [`buffer`](https://github.com/jvilk/bfs-buffer)

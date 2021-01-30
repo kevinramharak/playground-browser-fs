@@ -1,11 +1,12 @@
 import ts from 'typescript';
+import { FSModule } from 'browserfs/dist/node/core/FS';
 
 type TS = typeof ts;
 
 /**
  *  * Creates a system to be used for compiling typescript with the BrowserFS filesystem
  */
-export function createSystem(fs: typeof import('fs')): ts.System {
+export function createSystem(fs: FSModule): ts.System {
     const newLine = '\n';
     const useCaseSensitiveFileNames = true;
 
