@@ -49,6 +49,7 @@ Create a [`ts.CompilerHost`](https://basarat.gitbook.io/typescript/overview/prog
 const { ts, fs } = browserfs;
 
 const system = ts.createSystem(fs);
+
 const host = ts.createCompilerHost(system as ts.System, compilerOptions as ts.CompilerOptions, ts as TS);
 ```
 
@@ -56,7 +57,7 @@ Check out the [type definitions](https://github.com/kevinramharak/BrowserFS/tree
 
 ## Running this plugin
 
-- [Click this link](https://www.staging-typescript.org/play?install-plugin=[playground-browser-fs])
+- [Click this link](https://www.typescript.org/play?install-plugin=[playground-browser-fs])
 
 or
 
