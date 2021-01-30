@@ -6,4 +6,5 @@ scripts
 .vscode
 yarn*
 tsconfig.json
+typings.tsconfig.json
 rollup*
