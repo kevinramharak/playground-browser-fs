@@ -57,14 +57,14 @@ Check out the [type definitions](https://github.com/kevinramharak/BrowserFS/tree
 
 ## Running this plugin
 
-- [Click this link](https://www.typescript.org/play?install-plugin=[playground-browser-fs])
+- [Click this link](https://www.typescript.org/play?install-plugin=playground-browser-fs)
 
 or
 
 - Open up the TypeScript Playground
 - Go the "Plugins" in the sidebar
 - Look for "Plugins from npm"
-- Add "[playground-browser-fs]"
+- Add "playground-browser-fs"
 - Reload the browser
 
 Then it will show up as a tab in the sidebar.
