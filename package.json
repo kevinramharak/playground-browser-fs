@@ -17,9 +17,8 @@
     "compile": "tsc",
     "bootstrap": "node scripts/getDTS.js",
     "start": "concurrently -p \"[{name}]\" -n \"ROLLUP,SITE\" -c \"bgBlue.bold,bgMagenta.bold\" \"yarn rollup -c rollup.config.js --watch\" \"yarn serve dist\"",
-    "prepublish": "yarn build && yarn typings",
+    "prepack": "yarn build && yarn typings",
     "typings": "tsc -p typings.tsconfig.json && cp src/global.d.ts typings/index.d.ts",
-    "postinstall": "yarn bootstrap && yarn build"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^11.0.2",
