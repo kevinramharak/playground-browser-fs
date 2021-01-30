@@ -23,6 +23,18 @@ The BrowserFS module can be accessed by accessing the `browserfs.BrowserFS` prop
 const { BrowserFS } = browserfs;
 ```
 
+To make the BrowserFS easier to work with (and type safe) the following api is exposed:
+```ts
+const { createFileSystem } = browserfs;
+```
+
+With the [declaration](https://github.com/kevinramharak/BrowserFS/tree/master/typings/):
+```ts
+// The FileSystemType maps to the backends at: https://jvilk.com/browserfs/2.0.0-beta/index.html#overview-of-backends
+type FileSystemType = "AsyncMirror" | "InMemory" | "IndexedDB" | "MountableFileSystem" | "HTTPRequest"
+declare createFileSystem<T extends FileSystemType>(config: FileSystemConfiguration<T>);
+```
+
 Create a [`ts.System`](https://basarat.gitbook.io/typescript/overview#file-system) like:
 ```ts
 const { ts, fs } = browserfs;
@@ -30,7 +42,7 @@ const { ts, fs } = browserfs;
 const system = ts.createSystem(fs);
 ```
 
-Create a [`ts.System`](https://basarat.gitbook.io/typescript/overview#file-system) like:
+Create a [`ts.CompilerHost`](https://basarat.gitbook.io/typescript/overview/program#usage-of-compilerhost) like:
 ```ts
 const { ts, fs } = browserfs;
 

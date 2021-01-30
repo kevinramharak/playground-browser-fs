@@ -20,10 +20,14 @@ export interface BrowserFSHost {
         createSystem: typeof createSystem,
         createCompilerHost: typeof createCompilerHost,
     },
+    BrowserFS: typeof bfs,
+    createFileSystem: typeof createFileSystem
 }
 
-// TODO: promisify fs
-
+/**
+ * Configures BrowserFS to use the given file system. This will be run by the plugin.
+ * @internal
+ */
 export function installBrowserFS(host: Record<string, any> = {}): typeof host & BrowserFSHost {
     bfs.install(host);
     const _global = host as typeof host & BrowserFSHost;
@@ -33,9 +37,15 @@ export function installBrowserFS(host: Record<string, any> = {}): typeof host & 
         createSystem,
         createCompilerHost,
     };
+    _global.BrowserFS = bfs;
+    _global.createFileSystem = createFileSystem;
     return _global as typeof host & BrowserFSHost;
 }
 
+/**
+ * Configures BrowserFS to use the given file system. This will be run by the plugin.
+ * @internal
+ */
 export function configureBrowserFS<T extends FileSystemType>(config: FileSystemConfiguration<T>) {
     return new Promise<void>((resolve, reject) => {
         bfs.configure(config, (error) => {
