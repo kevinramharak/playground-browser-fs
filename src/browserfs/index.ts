@@ -1,4 +1,5 @@
 import bfs from 'browserfs';
+import type { FSModule } from 'browserfs/dist/node/core/FS';
 
 import { createSystem, createCompilerHost } from '../playgroundbfs';
 
@@ -8,20 +9,22 @@ type FileSystemCreateCallbackParameters<T extends FileSystemType> = Parameters<P
 export type FileSystem<T extends FileSystemType> = FileSystemCreateCallbackParameters<T>[1];
 export type BaseFileSystemConfiguration<T extends FileSystemType> = { fs: T, options?: any };
 export type ExactFileSystemConfiguration<T extends FileSystemType> = T extends 'InMemory' ? BaseFileSystemConfiguration<T> : Parameters<FileSystemConstructor<T>['Create']>[0];
-export type FileSystemConfiguration<T extends FileSystemType> = BaseFileSystemConfiguration<T> & ExactFileSystemConfiguration<T>;
+export type FileSystemConfiguration<T extends FileSystemType> = BaseFileSystemConfiguration<T> & { options?: ExactFileSystemConfiguration<T> };
 
 export interface BrowserFSHost {
-    buffer: typeof import('buffer');
-    Buffer: typeof import('buffer').Buffer;
-    path: typeof import('path');
-    process: typeof import('process');
+    buffer: typeof import('buffer'),
+    Buffer: typeof import('buffer').Buffer,
+    path: typeof import('path'),
+    fs: FSModule,
+    root: FileSystem<'MountableFileSystem'>,
+    process: typeof import('process'),
     require: typeof bfs.BFSRequire;
     ts: {
         createSystem: typeof createSystem,
         createCompilerHost: typeof createCompilerHost,
     },
     BrowserFS: typeof bfs,
-    createFileSystem: typeof createFileSystem
+    createFileSystem: typeof createFileSystem,
 }
 
 /**
@@ -33,6 +36,7 @@ export function installBrowserFS(host: Record<string, any> = {}): typeof host & 
     const _global = host as typeof host & BrowserFSHost;
     _global.buffer = _global.require('buffer');
     _global.path = _global.require('path');
+    _global.fs = _global.require('fs');
     _global.ts = {
         createSystem,
         createCompilerHost,
@@ -47,10 +51,8 @@ export function installBrowserFS(host: Record<string, any> = {}): typeof host & 
  * @internal
  */
 export function configureBrowserFS<T extends FileSystemType>(config: FileSystemConfiguration<T>) {
-    return new Promise<void>((resolve, reject) => {
-        bfs.configure(config, (error) => {
-            error ? reject(error) : resolve();
-        });
+    return createFileSystem(config).then(fs => {
+        browserfs.root = bfs.initialize(fs) as FileSystem<'MountableFileSystem'>;
     });
 }
 
