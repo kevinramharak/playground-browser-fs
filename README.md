@@ -49,6 +49,7 @@ Create a [`ts.CompilerHost`](https://basarat.gitbook.io/typescript/overview/prog
 const { ts, fs } = browserfs;
 
 const system = ts.createSystem(fs);
+const host = ts.createCompilerHost(system: ts.System, compilerOptions: ts.CompilerOptions, ts: TS);
 ```
 
 Check out the [type definitions](https://github.com/kevinramharak/BrowserFS/tree/master/typings/) or take a look at the [source code](https://github.com/kevinramharak/BrowserFS/tree/master/src/) if you need more information.
