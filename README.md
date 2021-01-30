@@ -31,8 +31,10 @@ const { createFileSystem } = browserfs;
 With the [declaration](https://github.com/kevinramharak/BrowserFS/tree/master/typings/):
 ```ts
 // The FileSystemType maps to the backends at: https://jvilk.com/browserfs/2.0.0-beta/index.html#overview-of-backends
+
 type FileSystemType = "AsyncMirror" | "InMemory" | "IndexedDB" | "MountableFileSystem" | "HTTPRequest"
-declare createFileSystem<T extends FileSystemType>(config: FileSystemConfiguration<T>);
+
+declare function createFileSystem<T extends FileSystemType>(config: FileSystemConfiguration<T>): Promise<FileSystem<T>>;
 ```
 
 Create a [`ts.System`](https://basarat.gitbook.io/typescript/overview#file-system) like:

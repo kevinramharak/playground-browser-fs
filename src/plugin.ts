@@ -37,7 +37,7 @@ export function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
             ds.p(`This plugin sets up an instance of <a href="https://github.com/kevinramharak/BrowserFS" rel="noopener" target="_blank">Browser FS</a> (fork) to be used by other plugins.`);
             
             ds.subtitle('API');
-            const p = ds.p('see the <a href="https://github.com/kevinramharak/BrowserFS" rel="noopener" target="_blank">docs</a> for more information how to use BrowserFS in your plugin');
+            const p = ds.p('see the <a href="https://github.com/kevinramharak/playground-browser-fs#api" rel="noopener" target="_blank">docs</a> for more information how to use BrowserFS in your plugin');
 
             const div = document.createElement('div');
             p.parentElement.appendChild(div);
