@@ -57,7 +57,7 @@ Check out the [type definitions](https://github.com/kevinramharak/BrowserFS/tree
 
 ## Running this plugin
 
-- [Click this link](https://www.typescript.org/play?install-plugin=playground-browser-fs)
+- [Click this link](https://www.typescriptlang.org/play?install-plugin=playground-browser-fs)
 
 or
 
