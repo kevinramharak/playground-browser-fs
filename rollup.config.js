@@ -19,7 +19,8 @@ export default rootFiles.map(name => {
       name,
       dir: 'dist',
       format: 'amd',
-      exports: 'named',
+      esModule: false,
+      sourcemap: process.env.NODE_ENV === 'production' ? false : 'inline',
     },
     plugins: [typescript({ tsconfig: 'tsconfig.json' }), externalGlobals({ typescript: "window.ts" }), commonjs(), node(), json()],
   }

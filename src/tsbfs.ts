@@ -1,5 +1,5 @@
 import type ts from 'typescript';
-import { fs, process } from './browserfs';
+import { fs, path, process, root, createFileSystem } from './browserfs';
 
 type TS = typeof ts;
 
@@ -17,6 +17,27 @@ interface SystemInternal {
  * see: `typescript/src/sys.ts#1214`
  */
 const EXECUTING_FILE_PATH = 'node_modules/typescript/lib/typescript.js';
+
+root.then(async (mountfs) => {
+    if (!(mountfs as any)._containsMountPt('node_modules')) {
+        const node_modules_fs = await createFileSystem({
+            fs: 'AsyncMirror',
+            options: {
+                sync: { fs: 'InMemory' },
+                async: { fs: 'IndexedDB', options: { storeName: 'playground-browser-fs@1.0.0-beta11::node_modules' }},
+            }
+        });
+        mountfs.mount('node_modules', node_modules_fs);
+    }
+});
+
+// TODO: move this to the BrowserFS fork
+function mkdirpSync(directoryPath: string, mode = 0o777) {
+    if (!fs.existsSync(directoryPath)) {
+        mkdirpSync(path.dirname(directoryPath), mode);
+        fs.mkdirSync(directoryPath, mode);
+    }
+}
 
 /**
  *  * Creates a system to be used for compiling typescript with the BrowserFS filesystem
@@ -45,8 +66,11 @@ export function createSystem(): ts.System {
         readFile(path: string) {
             return fs.readFileSync(path, { encoding });
         },
-        writeFile(path: string, content: string) {
-            fs.writeFileSync(path, content, { encoding });
+        writeFile(filePath: string, content: string) {
+            // write file should always ensure its directory should exist
+            // see: typescript/src/compiler/sys.ts#954
+            mkdirpSync(path.dirname(filePath));
+            fs.writeFileSync(filePath, content, { encoding });
         },
         resolvePath: path => path,
         fileExists(path: string) {
@@ -111,7 +135,18 @@ export function createSystem(): ts.System {
  */
 export function createCompilerHost(system: ts.System, compilerOptions: ts.CompilerOptions, ts: TS): ts.CompilerHost {
     const host: ts.CompilerHost = {
-        ...system,
+        writeFile(fileName, data, writeByteOrderMark, onError, sourceFiles) {
+            try {
+                system.writeFile(fileName, data, writeByteOrderMark);
+            } catch (e) {
+                if (onError) {
+                    onError(e);
+                }
+            }
+        },
+        getCurrentDirectory: () => system.getCurrentDirectory(),
+        fileExists: (fileName) => system.fileExists(fileName),
+        readFile: fileName => system.readFile(fileName),
         getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile) {
             // NOTE: taken straight from `typescript/src/program.ts#77`
             let text: string | undefined;
@@ -144,7 +179,6 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
         },
         resolveModuleNames(moduleNames, containingFile, reusedNames, redirectedReference, options) {
             return moduleNames.map(moduleName => {
-
                 return undefined;
             }) as (ts.ResolvedModuleFull | undefined)[];
         }

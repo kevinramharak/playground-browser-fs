@@ -42,13 +42,13 @@ async function configureBrowserFS(config: FileSystemConfiguration<'MountableFile
     });
 }
 
-export const root = (window as any).root ? (window as any).root as any : defer<FileSystem<'MountableFileSystem'>>();
+export const root = (window as any).root ? (window as any).root as Promise<FileSystem<'MountableFileSystem'>> : defer<FileSystem<'MountableFileSystem'>>();
 
 if (!(fs as any).root) {
     configureBrowserFS({
         fs: 'MountableFileSystem',
         options: {},
-    }).then(rootFs => root.resolve(rootFs));
+    }).then(rootFs => (root as Deferred<FileSystem<'MountableFileSystem'>>).resolve(rootFs));
 }
 
 /**
