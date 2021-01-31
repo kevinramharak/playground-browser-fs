@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "esModuleInterop": true,
-    "emitDeclarationOnly": true,
+    "noEmit": true,
+    "listFiles": true,
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
   ]
 }

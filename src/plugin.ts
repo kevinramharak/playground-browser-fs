@@ -1,36 +1,24 @@
-/// <reference path="./global.d.ts" />
-
-import type { editor } from 'monaco-editor';
-import { configureBrowserFS, FileSystem, FileSystemType, installBrowserFS } from './browserfs';
+import { root as rootFs, FileSystem, FileSystemType } from './browserfs';
 import type { PluginUtils, PlaygroundPlugin } from './vendor/playground';
-import type { Sandbox } from './vendor/sandbox';
 
-interface IPluginData {
-
-}
-
-function highlight(sandbox: Sandbox, code: string, language: string, options: editor.IColorizerOptions = { tabSize: 2 }) {
-    return sandbox.monaco.editor.colorize(code, language, options);
-}
-
-export function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
-    if (window.browserfs) {
-        console.warn('browserfs already exists. this might cause issues');
+export default function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
+    async function createMountPointList() {
+        const root = await rootFs;
+        const mountMap: { [mountPoint: string]: FileSystem<FileSystemType> } = (root as any).mntMap;
+        let list = '';
+        if (!mountMap['/']) {
+            list += `- / : ${root._getFs('/').fs.getName()} - default\n`;
+        }
+        Object.entries(mountMap).forEach(([mountPoint, fs]) => {
+            list += `- ${mountPoint} : ${fs.getName()}\n`;
+        });
+        return list;
     }
-
-    const browserfs = installBrowserFS();
-    const whenConfigured = configureBrowserFS({
-        fs: 'MountableFileSystem',
-        options: {},
-    }).then((root) => {
-        browserfs.root = root;
-        window.browserfs = browserfs;
-    });
 
     return {
         id: "browserfs",
         displayName: "Browser FS",
-        didMount: (sandbox, container) => {
+        didMount: async (sandbox, container) => {
             const ds = utils.createDesignSystem(container)
             
             ds.subtitle("Browser FS")
@@ -41,32 +29,15 @@ export function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
 
             const div = document.createElement('div');
             p.parentElement.appendChild(div);
-            const subds = utils.createDesignSystem(div);
 
-            subds.subtitle('BrowserFS is still initialising...');
+            const list = await createMountPointList();
+            ds.subtitle('current mount points:')
+            const code = ds.code(list);
 
-            whenConfigured.then(() => {
-                subds.clear();
-                subds.subtitle('current mount points:')
-
-                const { root } = browserfs;
-                const mountMap: { [mountPoint: string]: FileSystem<FileSystemType> } = (root as any).mntMap;
-                let list = '';
-                if (!mountMap['/']) {
-                    list += `- / : ${root._getFs('/').fs.getName()} - default`;
-                }
-                Object.entries(mountMap).forEach(([mountPoint, fs]) => {
-                    list += `- ${mountPoint} : ${fs.getName()}\n`;
-                });
-
-                ds.code(list);
-            }).catch(e => {
-                subds.clear();
-                subds.subtitle('Something went wrong while initialising BrowserFS');
-                subds.code(e);
-                throw e;
-            });
-
+            ds.button({ label: 'refresh list', onclick: async () => {
+                const list = await createMountPointList();
+                code.innerHTML = list;
+            }}).style.marginTop = '16px';
         },
     }
 }

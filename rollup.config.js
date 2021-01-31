@@ -4,7 +4,7 @@ import commonjs from '@rollup/plugin-commonjs'
 import json from '@rollup/plugin-json'
 
 // You can have more root bundles by extending this array
-const rootFiles = ['index.ts']
+const rootFiles = ['index.ts'];
 
 export default rootFiles.map(name => {
   /** @type { import("rollup").RollupOptions } */

@@ -1,12 +1,27 @@
 import ts from 'typescript';
-import { FSModule } from 'browserfs/dist/node/core/FS';
+import { fs, process } from './browserfs';
 
 type TS = typeof ts;
+
+// NOTE: we mimic the `ts.sys` from `ts.getNodeSys()` as much as possible
+
+interface SystemInternal {
+    getEnvironmentVariable(name: string): string;
+}
+
+/**
+ * This points to the file path of the typescript 'executable'
+ * Based on the nodejs implementation of `sys.getExecutingFilePath()` which returns `__filename`
+ * `__filename` in turn will be the `typescript/lib/typescript.js` file that is a bundle of the compiler build
+ * NOTE: im not sure why `__filename` is used as this would probably break stuff if they ever move to a non-bundled build
+ * see: `typescript/src/sys.ts#1214`
+ */
+const EXECUTING_FILE_PATH = 'node_modules/typescript/lib/typescript.js';
 
 /**
  *  * Creates a system to be used for compiling typescript with the BrowserFS filesystem
  */
-export function createSystem(fs: FSModule): ts.System {
+export function createSystem(): ts.System {
     const newLine = '\n';
     const useCaseSensitiveFileNames = true;
 
@@ -16,14 +31,17 @@ export function createSystem(fs: FSModule): ts.System {
     // NOTE: we take ts/vfs as a guide to implement the minimum amount to make the playground version work
     // see: typescript/src/compiler/sys.ts#1136
 
-    const system: ts.System = {
+    const system: ts.System & SystemInternal = {
         args: [],
         newLine,
         useCaseSensitiveFileNames,
         write(string: string) {
-            console.log(string);
+            // TODO: allow easier access to this function, tough nothing is stopping consumers from overriding this function
+            console.log(`tsbfs :: sys.write :: ${string}`);
         },
-        writeOutputIsTTY: () => false,
+        writeOutputIsTTY() {
+            return process.stdout.isTTY;
+        },
         readFile(path: string) {
             return fs.readFileSync(path, { encoding });
         },
@@ -61,8 +79,7 @@ export function createSystem(fs: FSModule): ts.System {
             }
         },
         getCurrentDirectory() {
-            // NOTE: uses a browser shim, value should be '/'
-            return global.process.cwd();
+            return process.cwd();
         },
         getDirectories(path: string) {
             try {
@@ -76,12 +93,14 @@ export function createSystem(fs: FSModule): ts.System {
             return [];
         },
         exit(code?) {
-            // NOTE: maybe ignore this instead?, doubt the shim does anything interesting
-            return global.process.exit(code);
+            return process.exit(code);
         },
         getExecutingFilePath() {
-            return system.getCurrentDirectory();
+            return EXECUTING_FILE_PATH;
         },
+        getEnvironmentVariable(name: string) {
+            return '';
+        }
     };
 
     return system;
@@ -104,14 +123,15 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
                     onError(e.message);
                 }
                 text = "";
+                return ts.createSourceFile(fileName, text, languageVersion, false);
             }
-            return text !== undefined ? ts.createSourceFile(fileName, text, languageVersion, false) : undefined;
         },
         getDefaultLibFileName() {
             return host.getDefaultLibLocation!() + ts.getDefaultLibFileName(compilerOptions);
         },
         getDefaultLibLocation() {
-            return system.getCurrentDirectory() + 'libs/';
+            // NOTE: use of 2 internal functions, see `typescript/src/program.ts#167`
+            return (ts as any).getDirectoryPath((ts as any).normalizePath(system.getExecutingFilePath()));
         },
         getCanonicalFileName(fileName) {
             return fileName;
@@ -123,9 +143,10 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
             return system.useCaseSensitiveFileNames;
         },
         resolveModuleNames(moduleNames, containingFile, reusedNames, redirectedReference, options) {
-            const modules = system.getDirectories('node_modules');
-            // TODO: implement this
-            return [] as (ts.ResolvedModuleFull | undefined)[];
+            return moduleNames.map(moduleName => {
+
+                return undefined;
+            }) as (ts.ResolvedModuleFull | undefined)[];
         }
     };
 
