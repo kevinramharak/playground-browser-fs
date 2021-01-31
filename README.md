@@ -56,6 +56,10 @@ export default rootFiles.map(name => {
     input: `src/${name}`,
     external: ['typescript', 'playground-browser-fs'], // <-- add 'playground-browser-fs' to any exisiting externals
     output: {
+      paths: {
+        "typescript":"typescript-sandbox/index",
+        "playground-browser-fs": "unpkg/playground-browser-fs/dist/index", // <-- add this entry
+      },
       name,
       dir: 'dist',
       format: 'amd',
@@ -66,14 +70,12 @@ export default rootFiles.map(name => {
 })
 ```
 
-> NOTE: !!! do not bundle this plugin with your own plugin
+> NOTE: !!! by using the above additions to your configuration the playground will fetch the playground-browser-fs plugin trough unpkg and thus share it with any other plugins that use it and thus removes the need to bundle the plugin and BrowserFS yourself
 
 ## API
 
-### importing the package vs using the global
-The plugin is exposed as the named module `playground-browser-fs` and as the global `browserfs`.
-Because of the async nature of the playground plugins the global might not be defined when you try to access it.
-For this reason using `import { ... } from 'playground-browser-fs` is recommended.
+### importing the package and a note abou
+
 
 ### BrowserFS
 BrowserFS provides an interface similar to the [`fs`](https://jvilk.com/browserfs/2.0.0-beta/interfaces/_core_fs_.fsmodule.html) module used in nodejs. In addition to the `fs` module BrowserFS provides the following shims with its `require` function:

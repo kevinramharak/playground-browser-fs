@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import type ts from 'typescript';
 import { fs, process } from './browserfs';
 
 type TS = typeof ts;

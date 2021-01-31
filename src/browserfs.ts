@@ -44,7 +44,7 @@ async function configureBrowserFS(config: FileSystemConfiguration<'MountableFile
 
 export const root = (window as any).root ? (window as any).root as any : defer<FileSystem<'MountableFileSystem'>>();
 
-if (!(window as any).browserfs) {
+if (!(fs as any).root) {
     configureBrowserFS({
         fs: 'MountableFileSystem',
         options: {},
