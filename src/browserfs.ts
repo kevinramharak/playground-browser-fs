@@ -26,7 +26,7 @@ export function defer<T>() {
 }
 
 export const buffer = BFSRequire('buffer');
-export const Buffer = buffer.Buffer;
+export const Buffer = buffer.Buffer as unknown as Buffer; // without this cast .d.ts generates typeof globalThis.Buffer
 export const path = BFSRequire('path');
 export const fs = BFSRequire('fs');
 export const process = BFSRequire('process');

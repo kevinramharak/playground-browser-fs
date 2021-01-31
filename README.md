@@ -41,6 +41,12 @@ yarn add playground-browser-fs
 yarn add -D https://github.com/kevinramharak/BrowserFS
 ```
 
+### install @types/node as a dependency
+```
+# TODO: without these types typescript cannot find the shim types and wont compile, probably easier to extract the types and bundle them
+yarn add -D @types/node
+```
+
 ### configure rollup to treat 
 ```
 // your config might look something like this:
