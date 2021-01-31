@@ -1,5 +1,8 @@
 import type ts from 'typescript';
 import { fs, path, process, root, createFileSystem } from './browserfs';
+import browserResolve from 'browser-resolve';
+
+const { sync: resolveSync } = browserResolve;
 
 type TS = typeof ts;
 
@@ -177,9 +180,27 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
         useCaseSensitiveFileNames() {
             return system.useCaseSensitiveFileNames;
         },
+        /**
+         * see: https://www.typescriptlang.org/docs/handbook/module-resolution.html
+         * for now use: https://github.com/browserify/browser-resolve#readme
+         * TODO: support more/all ts options?
+         */
         resolveModuleNames(moduleNames, containingFile, reusedNames, redirectedReference, options) {
             return moduleNames.map(moduleName => {
-                return undefined;
+                try {
+                    const resolvedFileName = resolveSync(moduleName, {
+                        filename: containingFile,
+                    });
+                    return {
+                        resolvedFileName,
+                        extension: path.extname(resolvedFileName),
+                        isExternalLibraryImport: resolvedFileName.startsWith('node_modules'),
+                        // TODO: support packageId
+                        packageId: void 0
+                    } as ts.ResolvedModuleFull;
+                } catch (e) {
+                    return;
+                }
             }) as (ts.ResolvedModuleFull | undefined)[];
         }
     };
