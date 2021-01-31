@@ -30,7 +30,6 @@ export const Buffer = buffer.Buffer as unknown as Buffer; // without this cast .
 export const path = BFSRequire('path');
 export const fs = BFSRequire('fs');
 export const process = BFSRequire('process');
-export const root = defer<FileSystem<'MountableFileSystem'>>();
 export const BrowserFS = BrowserFSModule;
 
 /**
@@ -43,10 +42,14 @@ async function configureBrowserFS(config: FileSystemConfiguration<'MountableFile
     });
 }
 
-configureBrowserFS({
-    fs: 'MountableFileSystem',
-    options: {},
-}).then(rootFs => root.resolve(rootFs));
+export const root = (window as any).root ? (window as any).root as any : defer<FileSystem<'MountableFileSystem'>>();
+
+if (!(window as any).browserfs) {
+    configureBrowserFS({
+        fs: 'MountableFileSystem',
+        options: {},
+    }).then(rootFs => root.resolve(rootFs));
+}
 
 /**
  * Creates a new BrowserFS file system with the given type and config. See the BrowserFS documentation for the exact options.
