@@ -1,6 +1,6 @@
 {
   "name": "playground-browser-fs",
-  "version": "1.0.0-beta7",
+  "version": "1.0.0-beta8",
   "main": "dist/index.js",
   "types": "index.d.ts",
   "description": "Playground plugin to enable other plugins to use BrowserFS as filesystem",
@@ -13,8 +13,8 @@
     "url": "https://github.com/kevinramharak/playground-browser-fs"
   },
   "scripts": {
-    "build": "rollup -c rollup.config.js",
-    "compile": "tsc",
+    "build": "rollup -c rollup.config.js && yarn build:types",
+    "build:types": "tsc -p types.tsconfig.json",
     "bootstrap": "node scripts/getDTS.js",
     "start": "concurrently -p \"[{name}]\" -n \"ROLLUP,SITE\" -c \"bgBlue.bold,bgMagenta.bold\" \"yarn rollup -c rollup.config.js --watch\" \"yarn serve dist\"",
     "prepack": "yarn build"
