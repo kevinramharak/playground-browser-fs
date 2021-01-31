@@ -23,4 +23,8 @@ if (typeof define === 'function') {
     });
 }
 
+if (!globalThis.browserfs) {
+    globalThis.browserfs = host;
+}
+
 export default pluginFactory;
