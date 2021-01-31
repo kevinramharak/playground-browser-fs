@@ -8,7 +8,7 @@ This plugin intialises [BrowserFS](https://github.com/jvilk/BrowserFS) with a [`
 
 
 ## When would you use it
-The playground is powered by (`TypeScript VFS`)[https://github.com/microsoft/TypeScript-Website/tree/v2/packages/typescript-vfs] by default. This works great for single file cases and with a bit of knowledge of the source code implementing multiple file support is not that much extra work.
+The playground is powered by [`TypeScript VFS`](https://github.com/microsoft/TypeScript-Website/tree/v2/packages/typescript-vfs) by default. This works great for single file cases and with a bit of knowledge of the source code implementing multiple file support is not that much extra work.
 
 While `playground-browser-fs` is largely based on `tsvfs` it mimics a nodejs environment for the typescript compiler. For example `createSystem` and `createCompilerHost` both return a `ts.System` and `ts.CompilerHost` that will pretend the typescript compiler was installed like a package and resides in `node_modules/typescript`.
 
