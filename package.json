@@ -1,6 +1,6 @@
 {
   "name": "playground-browser-fs",
-  "version": "1.0.0-beta14",
+  "version": "1.0.0-beta15",
   "main": "dist/index.js",
   "types": "index.d.ts",
   "description": "Playground plugin to enable other plugins to use BrowserFS as filesystem",
