@@ -1,8 +1,9 @@
 import type ts from 'typescript';
-import { fs, path, process, root, createFileSystem } from './browserfs';
-import browserResolve from 'browser-resolve';
+import { fs, path, process, root, createFileSystem, FileSystem } from './browserfs';
+import resolve from 'browser-resolve';
+import { JSONSchemaForNPMPackageJsonFiles } from './temp';
 
-const { sync: resolveSync } = browserResolve;
+const { sync: resolveSync } = resolve;
 
 type TS = typeof ts;
 
@@ -12,28 +13,6 @@ interface SystemInternal {
     getEnvironmentVariable(name: string): string;
 }
 
-/**
- * This points to the file path of the typescript 'executable'
- * Based on the nodejs implementation of `sys.getExecutingFilePath()` which returns `__filename`
- * `__filename` in turn will be the `typescript/lib/typescript.js` file that is a bundle of the compiler build
- * NOTE: im not sure why `__filename` is used as this would probably break stuff if they ever move to a non-bundled build
- * see: `typescript/src/sys.ts#1214`
- */
-const EXECUTING_FILE_PATH = 'node_modules/typescript/lib/typescript.js';
-
-root.then(async (mountfs) => {
-    if (!(mountfs as any)._containsMountPt('node_modules')) {
-        const node_modules_fs = await createFileSystem({
-            fs: 'AsyncMirror',
-            options: {
-                sync: { fs: 'InMemory' },
-                async: { fs: 'IndexedDB', options: { storeName: 'playground-browser-fs@1.0.0-beta11::node_modules' }},
-            }
-        });
-        mountfs.mount('node_modules', node_modules_fs);
-    }
-});
-
 // TODO: move this to the BrowserFS fork
 function mkdirpSync(directoryPath: string, mode = 0o777) {
     if (!fs.existsSync(directoryPath)) {
@@ -41,6 +20,47 @@ function mkdirpSync(directoryPath: string, mode = 0o777) {
         fs.mkdirSync(directoryPath, mode);
     }
 }
+
+/**
+ * 
+ */
+const NODE_MODULES = '/node_modules';
+
+/**
+ * 
+ */
+const INDEXEDDB_STORE_NAME = 'playground-browser-fs@1.0.0-beta11::node_modules';
+
+/**
+ * This points to the file path of the typescript 'executable'
+ * Based on the nodejs implementation of `sys.getExecutingFilePath()` which returns `__filename`
+ * `__filename` in turn will be the `typescript/lib/typescript.js` file that is a bundle of the compiler build
+ * NOTE: im not sure why `__filename` is used as this would probably break stuff if they ever move to a non-bundled build
+ * see: `typescript/src/sys.ts#1214`
+ */
+const EXECUTING_FILE_PATH = `${NODE_MODULES}/typescript/lib/typescript.js`;
+
+root.then(async (mountfs) => {
+    if (!(mountfs as any)._containsMountPt(NODE_MODULES)) {
+        const node_modules_fs = await createFileSystem({
+            fs: 'AsyncMirror',
+            options: {
+                sync: { fs: 'InMemory' },
+                async: { fs: 'IndexedDB', options: { storeName: INDEXEDDB_STORE_NAME } },
+            }
+        });
+        mountfs.mount(NODE_MODULES, node_modules_fs);
+        const hiddenFs = (mountfs as any).rootFs as FileSystem<'InMemory'>;
+        // copy writes to `node_modules/**/*` that happend before `node_modules` was mounted
+        if (hiddenFs.existsSync(NODE_MODULES) && hiddenFs.statSync(NODE_MODULES, false).isDirectory()) {
+            hiddenFs.readdirSync(NODE_MODULES).forEach(entry => {
+                console.warn(`${NODE_MODULES}/${entry} is being shadowed by the AsyncMirror { inMemory <=> IndexedDB }`);
+            });
+            // TODO: implement this in playground-browser-fs
+            // copyRecursive(hiddenFs, mountfs, NODE_MODULES);
+        }
+    }
+});
 
 /**
  *  * Creates a system to be used for compiling typescript with the BrowserFS filesystem
@@ -188,21 +208,49 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
         resolveModuleNames(moduleNames, containingFile, reusedNames, redirectedReference, options) {
             return moduleNames.map(moduleName => {
                 try {
-                    const resolvedFileName = resolveSync(moduleName, {
-                        filename: containingFile,
-                    });
-                    return {
-                        resolvedFileName,
-                        extension: path.extname(resolvedFileName),
-                        isExternalLibraryImport: resolvedFileName.startsWith('node_modules'),
-                        // TODO: support packageId
-                        packageId: void 0
-                    } as ts.ResolvedModuleFull;
+                    // TODO: cache
+                    const packageJsonPath = resolveSync(`${moduleName}/package.json`);
+                    const packageDirectoryPath = path.dirname(packageJsonPath);
+                    const packageJson: JSONSchemaForNPMPackageJsonFiles = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+                    if (packageJson.main) {
+                        return {
+                            resolvedFileName: path.resolve(packageDirectoryPath, packageJson.main),
+                            extension: path.extname(packageJson.main),
+                            isExternalLibraryImport: packageDirectoryPath.startsWith(NODE_MODULES),
+                            packageId: {
+                                name: packageJson.name,
+                                subModuleName: path.basename(packageJson.main).startsWith('index') ? '' : path.dirname(packageJson.main),
+                                version: packageJson.version,
+                            },
+                        } as ts.ResolvedModuleFull;
+                    }
                 } catch (e) {
                     return;
                 }
             }) as (ts.ResolvedModuleFull | undefined)[];
-        }
+        },
+        resolveTypeReferenceDirectives(moduleNames, containingFile, redirectedReference, options) {
+            return moduleNames.map(moduleName => {
+                // TODO: cache
+                const packageJsonPath = resolveSync(`${moduleName}/package.json`);
+                const packageDirectoryPath = path.dirname(packageJsonPath);
+                const packageJson: JSONSchemaForNPMPackageJsonFiles = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+                const types = packageJson.types || packageJson.typings;
+                if (types) {
+                    return {
+                        resolvedFileName: path.resolve(packageDirectoryPath, types),
+                        extension: path.extname(types),
+                        primary: true,
+                        isExternalLibraryImport: packageDirectoryPath.startsWith(NODE_MODULES),
+                        packageId: {
+                            name: packageJson.name,
+                            subModuleName: path.basename(types).startsWith('index') ? '' : path.dirname(types),
+                            version: packageJson.version,
+                        },
+                    } as ts.ResolvedTypeReferenceDirective;
+                }
+            }) as ts.ResolvedTypeReferenceDirective[];
+        },
     };
 
     return host;

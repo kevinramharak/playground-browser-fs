@@ -223,7 +223,7 @@ browser-resolve@^2.0.0:
 
 "browserfs@https://github.com/kevinramharak/BrowserFS.git":
   version "2.0.0"
-  resolved "https://github.com/kevinramharak/BrowserFS.git#f6e0c91d856ac79aa696b16ccdad264bc7d5d337"
+  resolved "https://github.com/kevinramharak/BrowserFS.git#5526a11908d4d40b3c91731ce958d4606533597a"
   dependencies:
     async "~2.6.1"
     pako "~1.0.6"
