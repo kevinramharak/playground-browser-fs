@@ -2,6 +2,8 @@
 
 The Playground Browser FS plugin provides an api on the global 'browserfs' for other plugins to consume. It uses a fork of [BrowserFS](https://github.com/kevinramharak/BrowserFS) to provide a custom build to provide a modern interface and helpers too interact with the playground.
 
+![preview](https://github.com/kevinramharak/playground-browser-fs/blob/master/static/playground-browser-fs-preview.jpg)
+
 ## What it does
 
 This plugin intialises [BrowserFS](https://github.com/jvilk/BrowserFS) with a [`MountableFileSystem`](https://jvilk.com/browserfs/2.0.0-beta/classes/_backend_mountablefilesystem_.mountablefilesystem.html). This allows other plugins to create and [mount](https://jvilk.com/browserfs/2.0.0-beta/classes/_backend_mountablefilesystem_.mountablefilesystem.html#mount) additional filesystems any given mount point. Using the `createSystem` and `createCompilerHost` factory functions will provide you with `ts.System` and `ts.CompilerHost` objects that can be used to invoke the typescript compiler using BrowserFS as file system.
