@@ -1,7 +1,7 @@
 import type ts from 'typescript';
-import { fs, path, process, root, createFileSystem, FileSystem } from './browserfs';
+import { fs, path, process, root, createFileSystem, FileSystem, mountFileSystem, emitFileSystemEvent } from './browserfs';
 import resolve from 'browser-resolve';
-import { JSONSchemaForNPMPackageJsonFiles } from './temp';
+import { JSONSchemaForNPMPackageJsonFiles } from './packageJson';
 import type { Sandbox } from './vendor/sandbox';
 
 const { sync: resolveSync } = resolve;
@@ -51,6 +51,7 @@ root.then(async (mountfs) => {
             }
         });
         mountfs.mount(NODE_MODULES, node_modules_fs);
+        emitFileSystemEvent('mounted', node_modules_fs);
         const hiddenFs = (mountfs as any).rootFs as FileSystem<'InMemory'>;
         // copy writes to `node_modules/**/*` that happend before `node_modules` was mounted
         if (hiddenFs.existsSync(NODE_MODULES) && hiddenFs.statSync(NODE_MODULES, false).isDirectory()) {
@@ -174,7 +175,7 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
         getCurrentDirectory: () => system.getCurrentDirectory(),
         fileExists: (fileName) => system.fileExists(fileName),
         readFile: fileName => system.readFile(fileName),
-        getSourceFile: (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
+        getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile) {
             // NOTE: taken straight from `typescript/src/program.ts#77`
             let text: string | undefined;
             try {

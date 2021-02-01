@@ -63,12 +63,73 @@ export function createFileSystem<T extends FileSystemType>(config: FileSystemCon
     });
 }
 
+interface FileSystemMountedEvent<T extends FileSystemType> extends CustomEvent<FileSystem<T>> {
+    name: 'FileSystemMounted';
+}
+
+interface FileSystemUnmountedEvent<T extends FileSystemType> extends CustomEvent<FileSystem<T>> {
+    name: 'FileSystemUnmounted';
+}
+
+// TODO: implement an actual event system
+/**
+ * @internal
+ */
+export const listeners = {
+    mounted: [],
+    unmounted: [],
+};
+
+/**
+ * Listen to mounted events, returns a deregister function
+ */
+export function onFileSystemMounted<T extends FileSystemType>(cb: (event: FileSystemMountedEvent<T>) => void) {
+    if (listeners.mounted.indexOf(cb) === -1) {
+        listeners.mounted.push(cb);
+    }
+    return () => {
+        const index = listeners.mounted.indexOf(cb);
+        if (index !== -1) {
+            listeners.mounted.splice(index, 1);
+        }
+    };
+}
+
+/**
+ * Listen to unmounted events, returns a deregister function
+ */
+export function onFileSystemUnmounted<T extends FileSystemType>(cb: (event: FileSystemUnmountedEvent<T>) => void) {
+    if (listeners.unmounted.indexOf(cb) === -1) {
+        listeners.unmounted.push(cb);
+    }
+    return () => {
+        const index = listeners.unmounted.indexOf(cb);
+        if (index !== -1) {
+            listeners.unmounted.splice(index, 1);
+        }
+    };
+}
+
+export function emitFileSystemEvent<T extends FileSystemType>(type: 'mounted' | 'unmounted', detail: FileSystem<T>) {
+    const name = {
+        mounted: 'FileSystemMounted',
+        unmounted: 'FileSystemUnmount',
+    }[type];
+    const event = new CustomEvent<FileSystem<T>>(name, { detail });
+    listeners[type].forEach(listener => {
+        BrowserFS.setImmediate(() => {
+            listener(event);
+        });
+    });
+}
+
 /**
  * Mounts the given file system at the given mount point
  */
 export async function mountFileSystem<T extends FileSystemType>(mountPoint: string, fs: FileSystem<T>) {
     const rootFs = await root;
     rootFs.mount(mountPoint, fs);
+    emitFileSystemEvent('mounted', fs);
 }
 
 /**
@@ -78,5 +139,6 @@ export async function unmountFileSystem(mountPoint: string) {
     const rootFs = await root;
     const mounted = rootFs._getFs(mountPoint);
     rootFs.umount(mountPoint);
+    emitFileSystemEvent('unmounted', mounted.fs as any);
     return mounted.fs;
 }
