@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
+    "target": "ES2020",
     "esModuleInterop": true,
     "noEmit": true,
-    "listFiles": true,
+    "downlevelIteration": true
   },
   "include": [
     "src/**/*.ts",

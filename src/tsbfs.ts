@@ -2,6 +2,7 @@ import type ts from 'typescript';
 import { fs, path, process, root, createFileSystem, FileSystem } from './browserfs';
 import resolve from 'browser-resolve';
 import { JSONSchemaForNPMPackageJsonFiles } from './temp';
+import type { Sandbox } from './vendor/sandbox';
 
 const { sync: resolveSync } = resolve;
 
@@ -156,7 +157,10 @@ export function createSystem(): ts.System {
 /**
  * Creates a compiler host to be used for compiling typescript with the BrowserFS filesystem
  */
-export function createCompilerHost(system: ts.System, compilerOptions: ts.CompilerOptions, ts: TS): ts.CompilerHost {
+export function createCompilerHost(system: ts.System, compilerOptions: ts.CompilerOptions, ts: TS): ts.CompilerHost {    
+    const { createDefaultMapFromCDN } = ((window as any).sandbox as Sandbox).tsvfs;
+    const libDTSFiles = createDefaultMapFromCDN(compilerOptions, ts.version, true, ts, (window as any).LZString);
+    
     const host: ts.CompilerHost = {
         writeFile(fileName, data, writeByteOrderMark, onError, sourceFiles) {
             try {
@@ -170,22 +174,21 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
         getCurrentDirectory: () => system.getCurrentDirectory(),
         fileExists: (fileName) => system.fileExists(fileName),
         readFile: fileName => system.readFile(fileName),
-        getSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile) {
+        getSourceFile: (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
             // NOTE: taken straight from `typescript/src/program.ts#77`
             let text: string | undefined;
             try {
                 text = host.readFile(fileName);
-            }
-            catch (e) {
+            } catch (e) {
                 if (onError) {
                     onError(e.message);
                 }
                 text = "";
-                return ts.createSourceFile(fileName, text, languageVersion, false);
             }
+            return ts.createSourceFile(fileName, text, languageVersion, false);
         },
         getDefaultLibFileName() {
-            return host.getDefaultLibLocation!() + ts.getDefaultLibFileName(compilerOptions);
+            return `${host.getDefaultLibLocation!()}/${ts.getDefaultLibFileName(compilerOptions)}`;
         },
         getDefaultLibLocation() {
             // NOTE: use of 2 internal functions, see `typescript/src/program.ts#167`
@@ -251,7 +254,18 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
                 }
             }) as ts.ResolvedTypeReferenceDirective[];
         },
+        realpath(path) {
+            return fs.realpathSync(path);
+        }
     };
+
+    
+    const libDirectory = host.getDefaultLibLocation!();
+    libDTSFiles.then(libDTSFiles => {
+        [...libDTSFiles.entries()].forEach(([name, content]) => {
+            system.writeFile(`${libDirectory}/${name}`, content);
+        });
+    });
 
     return host;
 };

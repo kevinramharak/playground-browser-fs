@@ -5,6 +5,7 @@
         "declaration": true,
         "declarationDir": "dist",
         "emitDeclarationOnly": true,
+        "downlevelIteration": true
     },
     "files": [
         "src/browserfs.ts",
