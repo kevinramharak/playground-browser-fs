@@ -7,8 +7,7 @@
         "emitDeclarationOnly": true,
         "downlevelIteration": true
     },
-    "files": [
-        "src/browserfs.ts",
-        "src/tsbfs.ts"
+    "include": [
+      "src/**/*.ts",
     ]
 }

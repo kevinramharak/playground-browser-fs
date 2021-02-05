@@ -1,10 +1,11 @@
-import { root as rootFs, FileSystem, FileSystemType, onFileSystemMounted, fs, path } from './browserfs';
+import { root as rootFs, FileSystem, FileSystemName, fs, path } from './browserfs';
+import { tabFactories } from './tabs';
 import type { PluginUtils, PlaygroundPlugin } from './vendor/playground';
 
 export default function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
     async function createMountPointList() {
         const root = await rootFs;
-        const mountMap: { [mountPoint: string]: FileSystem<FileSystemType> } = (root as any).mntMap;
+        const mountMap: { [mountPoint: string]: FileSystem<FileSystemName> } = (root as any).mntMap;
         let list = '';
         if (!mountMap['/']) {
             list += `- / : ${root._getFs('/').fs.getName()} - default\n`;
@@ -15,51 +16,7 @@ export default function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
         return list;
     }
 
-    function createDetailsFor(pathName: string) {
-        const details = document.createElement('details');
-        details.setAttribute('data-folder', pathName);
-        const summary = document.createElement('summary');
-        if (pathName === '/') {
-            details.setAttribute('open', 'open');
-        }
-        summary.innerText = pathName === '/' ? pathName : path.basename(pathName);
-        details.appendChild(summary);
-
-        const children = fs.readdirSync(pathName).map(entry => {
-            const fullPath = path.resolve(pathName, entry);
-            const stat = fs.statSync(fullPath);
-            if (stat.isDirectory()) {
-                return createDetailsFor(fullPath);
-            } else if (stat.isFile()) {
-                const file = document.createElement('p');
-                file.innerText = `${entry}`;
-                file.setAttribute('data-file', fullPath);
-                return file;
-            }
-        });
-
-        const folder = document.createElement('div');
-        folder.classList.add('folder');
-        details.appendChild(folder);
-        if (children.length) {
-            folder.append(...children);
-        } else {
-            folder.innerHTML = `<small><p><i>empty folder</i></p></small>`;
-        }
-
-        return details;
-    }
-
-    function createFileTree() {
-        const container = document.createElement('div');
-        container.classList.add('browserfs');
-
-        const root = createDetailsFor('/');
-        container.appendChild(root);
-
-        return container;
-    }
-
+    // TODO: externalize this
     const css = `
 .browserfs-collapse summary > * {
     display: inline-block
@@ -132,82 +89,99 @@ export default function pluginFactory(utils: PluginUtils): PlaygroundPlugin {
     style.innerText = css;
     document.head.appendChild(style);
 
-    const deregisters = [];
+    const tabEntries = tabFactories.map(entry => entry(utils));
 
-    function createDetails(summary: HTMLElement, content: HTMLElement) {
-        const details = document.createElement('details');
-        const _summary = document.createElement('summary');
-        details.classList.add('browserfs-collapse');
-        _summary.appendChild(summary);
-        details.append(_summary, content);
-        return details;
-    }
+    const data = {
+        tabEntries,
+        active: tabEntries[0],
+        tabContainer: document.createElement('div'),
+    };
+
+    const id = "browserfs";
+    const displayName = "Browser FS";
+
+    const getTabId = (tabId: string) => `playground-plugin-tab-${id}-${tabId}`;
 
     return {
-        id: "browserfs",
-        displayName: "Browser FS",
+        id,
+        displayName,
+        data,
         willMount: (sandbox, container) => {
+            // based on https://github.com/microsoft/TypeScript-website/blob/v2/packages/typescriptlang-org/src/components/workbench/plugins/docs.ts#L247
             const ds = utils.createDesignSystem(container);
+            const bar = ds.createTabBar();
+            const tabs: HTMLElement[] = [];
 
-            container.appendChild(
-                createDetails(
-                    ds.subtitle("Browser FS"),
-                    ds.p(`This plugin sets up an instance of <a href="https://github.com/kevinramharak/BrowserFS" rel="noopener" target="_blank">Browser FS</a> (fork) to be used by other plugins.`),
-                )
-            );
-
-            container.appendChild(
-                createDetails(
-                    ds.subtitle('API'),
-                    ds.p('see the <a href="https://github.com/kevinramharak/playground-browser-fs#api" rel="noopener" target="_blank">docs</a> for more information how to use BrowserFS in your plugin'),
-                )
-            );
-            
-
-            const code = ds.code('');
-            container.appendChild(
-                createDetails(
-                    ds.subtitle('Mountpoints'),
-                    code.parentElement,
-                )
-            );
-            
-            createMountPointList().then(list => {
-                code.innerHTML = list;
-            });
-
-            deregisters.push(onFileSystemMounted(async () => {
-                const list = await createMountPointList();
-                code.innerHTML = list;
-            }));
-
-            const fileTreeContainer = document.createElement('div');
-            ds.subtitle('File Explorer');
-            ds.button({ label: 'refresh file tree', onclick() {
-                rootFs.then(() => {
-                    const tree = createFileTree();
-                    while (fileTreeContainer.hasChildNodes()) {
-                        fileTreeContainer.firstChild.remove();
+            tabEntries.forEach(entry => {
+                const tab = ds.createTabButton(entry.displayName);
+                tab.id = getTabId(entry.id);
+                tabs.push(tab);
+                tab.onclick = () => {
+                    const ds = utils.createDesignSystem(data.tabContainer);
+                    
+                    if (data.active.willUnmount) {
+                        data.active.willUnmount(sandbox, data.tabContainer);
                     }
-                    fileTreeContainer.appendChild(tree);
-                });
-            }}).style.margin = '8px 0';
-            container.appendChild(fileTreeContainer);
-            
-            rootFs.then(() => {
-                const tree = createFileTree();
-                while (fileTreeContainer.hasChildNodes()) {
-                    fileTreeContainer.firstChild.remove();
-                }
-                fileTreeContainer.appendChild(tree);
+                    
+                    ds.clear();
+                    tabs.forEach(tab => tab.classList.remove('active'));
+
+                    if (data.active.didUnmount) {
+                        data.active.didUnmount(sandbox, data.tabContainer);
+                    }
+
+                    if (entry.willMount) {
+                        entry.willMount(sandbox, data.tabContainer);
+                    }
+
+                    tab.classList.add('active');
+                    data.active = entry;
+                    
+                    if (data.active.didMount) {
+                        data.active.didMount(sandbox, data.tabContainer);
+                    }
+                };
+
+                bar.appendChild(tab);
             });
+            
+            container.appendChild(bar);
+            container.appendChild(data.tabContainer);
+
+            if (data.active) {
+                if (data.active.willMount) {
+                    data.active.willMount(sandbox, data.tabContainer);
+                }
+                const activeTab = document.querySelector(`#${getTabId(data.active.id)}`);
+                if (activeTab) {
+                    activeTab.classList.add('active');
+                }
+                if (data.active.didMount) {
+                    data.active.didMount(sandbox, data.tabContainer);
+                }
+            }
+        },
+        didMount: (sandbox, container) => {
+            if (data.active.didMount) {
+                data.active.didMount(sandbox, data.tabContainer);
+            }
         },
         willUnmount: (sandbox, container) => {
-            deregisters.forEach(deregister => deregister());
-            deregisters.splice(0);
+            container.removeChild(data.tabContainer);
+            if (data.active.willUnmount) {
+                data.active.willUnmount(sandbox, data.tabContainer);
+            }
         },
-        modelChangedDebounce(sandbox, model) {
+        didUnmount: (sandbox, container) => {
+            if (data.active.didUnmount) {
+                data.active.didUnmount(sandbox, data.tabContainer);
+            }
+        },
+        modelChangedDebounce(sandbox, model, container) {
             fs.writeFile(sandbox.filepath, sandbox.getText());
+            if (data.active.modelChangedDebounce) {
+                data.active.modelChangedDebounce(sandbox, model, data.tabContainer);
+            }
         },
     } as PlaygroundPlugin;
 }

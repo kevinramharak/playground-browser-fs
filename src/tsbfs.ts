@@ -1,5 +1,5 @@
 import type ts from 'typescript';
-import { fs, path, process, root, createFileSystem, FileSystem, mountFileSystem, emitFileSystemEvent } from './browserfs';
+import { fs, path, process, root, createFileSystem, FileSystem } from './browserfs';
 import resolve from 'browser-resolve';
 import { JSONSchemaForNPMPackageJsonFiles } from './packageJson';
 import type { Sandbox } from './vendor/sandbox';
@@ -30,7 +30,7 @@ const NODE_MODULES = '/node_modules';
 /**
  * 
  */
-const INDEXEDDB_STORE_NAME = 'playground-browser-fs@1.0.0-beta11::node_modules';
+const INDEXEDDB_STORE_NAME = `playground-browser-fs@1.0.0-beta11${NODE_MODULES}`;
 
 /**
  * This points to the file path of the typescript 'executable'
@@ -41,24 +41,21 @@ const INDEXEDDB_STORE_NAME = 'playground-browser-fs@1.0.0-beta11::node_modules';
  */
 const EXECUTING_FILE_PATH = `${NODE_MODULES}/typescript/lib/typescript.js`;
 
+// TODO: implement a less memory intensive fs instead. something like MemoryFS => WorkerFS <= IndexedDB where the memory fs only does reads from WorkerFS on demand
+// currently AsyncMirror reads the whole IndexedDB to InMemory and then uses InMemory while writing to IndexedDB in the background. Will throw NOSUP errors if you use async calls, thats not what we want
 root.then(async (mountfs) => {
     if (!(mountfs as any)._containsMountPt(NODE_MODULES)) {
-        const node_modules_fs = await createFileSystem({
-            fs: 'AsyncMirror',
-            options: {
-                sync: { fs: 'InMemory' },
-                async: { fs: 'IndexedDB', options: { storeName: INDEXEDDB_STORE_NAME } },
-            }
-        });
+        const memory_fs = await createFileSystem('InMemory', void 0);
+        const indexeddb_fs = await createFileSystem('IndexedDB', { storeName: INDEXEDDB_STORE_NAME });
+        const node_modules_fs = await createFileSystem('AsyncMirror', { async: indexeddb_fs, sync: memory_fs });
         mountfs.mount(NODE_MODULES, node_modules_fs);
-        emitFileSystemEvent('mounted', node_modules_fs);
         const hiddenFs = (mountfs as any).rootFs as FileSystem<'InMemory'>;
-        // copy writes to `node_modules/**/*` that happend before `node_modules` was mounted
+
+        // TODO: copy writes to `node_modules/**/*` that happened before `node_modules` was mounted
         if (hiddenFs.existsSync(NODE_MODULES) && hiddenFs.statSync(NODE_MODULES, false).isDirectory()) {
             hiddenFs.readdirSync(NODE_MODULES).forEach(entry => {
                 console.warn(`${NODE_MODULES}/${entry} is being shadowed by the AsyncMirror { inMemory <=> IndexedDB }`);
             });
-            // TODO: implement this in playground-browser-fs
             // copyRecursive(hiddenFs, mountfs, NODE_MODULES);
         }
     }
@@ -186,7 +183,7 @@ export function createCompilerHost(system: ts.System, compilerOptions: ts.Compil
                 }
                 text = "";
             }
-            return ts.createSourceFile(fileName, text, languageVersion, false);
+            return ts.createSourceFile(fileName, text!, languageVersion, false);
         },
         getDefaultLibFileName() {
             return `${host.getDefaultLibLocation!()}/${ts.getDefaultLibFileName(compilerOptions)}`;

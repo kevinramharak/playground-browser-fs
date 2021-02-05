@@ -1,6 +1,6 @@
 {
   "name": "playground-browser-fs",
-  "version": "1.0.0-beta18",
+  "version": "1.0.0-beta19",
   "main": "dist/index.js",
   "types": "index.d.ts",
   "description": "Playground plugin to enable other plugins to use BrowserFS as filesystem",
@@ -35,7 +35,7 @@
     "rollup-plugin-external-globals": "^0.6.1",
     "rollup-plugin-node-globals": "^1.4.0",
     "serve": "^11.3.0",
-    "typescript": "latest"
+    "typescript": "^4.2.0-dev.20210204"
   },
   "dependencies": {
     "@rollup/plugin-alias": "^3.1.2",
